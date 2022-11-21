@@ -1,0 +1,51 @@
+# docker-compose up -d --build
+version: '2.3'
+
+services:
+
+    rabbitmq:
+      image: rabbitmq:3-management
+      container_name: rabbitmq
+      hostname: rabbitmq
+      ports:
+        - "5672:5672"
+        - "15672:15672"
+      networks:
+        - api
+      healthcheck:
+        test: rabbitmq-diagnostics -q ping
+        interval: 5s
+        timeout: 30s
+        retries: 3
+
+    fast_api:
+      container_name: fast_api
+      build:
+        context: ./
+        dockerfile: Dockerfile
+      ports:
+        - "8000:80"
+      networks:
+        - api
+      links:
+        - rabbitmq
+      depends_on:
+        rabbitmq:
+          condition: service_healthy
+
+    listener:
+      container_name: listener
+      build:
+        context: ./
+        dockerfile: listener_Dockerfile
+      networks:
+        - api
+      links:
+        - rabbitmq
+      depends_on:
+        rabbitmq:
+          condition: service_healthy
+
+networks:
+    api:
+      driver: bridge
